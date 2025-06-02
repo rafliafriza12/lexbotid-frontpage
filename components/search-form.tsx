@@ -6,31 +6,34 @@ import { useState } from "react";
 import { Search, Filter, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AnswerDisplay } from "@/components/answer-display";
+import { motion } from "framer-motion";
+import API from "@/lib/API";
+
+interface ResponseAPI {
+  answer: string;
+  source: string;
+}
 
 export function SearchForm() {
   const [question, setQuestion] = useState("");
-  const [category, setCategory] = useState("all");
-  const [showAnswer, setShowAnswer] = useState(false);
+  const [answer, setAnswer] = useState<ResponseAPI | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!question) return;
-
+    if (!question || !question.trim()) return;
     setIsLoading(true);
-    // Simulasi loading
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowAnswer(true);
-    }, 1500);
+    setAnswer(null);
+    API.post("/api/qa", { question: question })
+      .then((res) => {
+        setAnswer(res.data.data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.log(err);
+        setIsLoading(false);
+      });
   };
 
   return (
@@ -38,15 +41,34 @@ export function SearchForm() {
       <div className="container px-4 md:px-6">
         <div className="mx-auto max-w-3xl space-y-8">
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight text-center hidden lg:block">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="text-2xl font-bold tracking-tight text-center hidden lg:block"
+            >
               Tanyakan Pertanyaan Hukum Anda
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 text-center hidden lg:block">
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              className="text-gray-500 dark:text-gray-400 text-center hidden lg:block"
+            >
               Dapatkan jawaban akurat berdasarkan perundang-undangan terbaru di
               Indonesia
-            </p>
+            </motion.p>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <motion.form
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+            onSubmit={handleSubmit}
+            className="space-y-4"
+          >
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
@@ -59,19 +81,6 @@ export function SearchForm() {
                 />
               </div>
               <div className="flex gap-2 w-full lg:w-auto justify-center items-center">
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="w-[180px]">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="Kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Perundangan</SelectItem>
-                    <SelectItem value="uu">Undang-Undang</SelectItem>
-                    <SelectItem value="pp">Peraturan Pemerintah</SelectItem>
-                    <SelectItem value="permen">Peraturan Menteri</SelectItem>
-                    <SelectItem value="perda">Peraturan Daerah</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Button type="submit" disabled={!question || isLoading}>
                   {isLoading ? (
                     <div className="flex items-center">
@@ -87,10 +96,17 @@ export function SearchForm() {
                 </Button>
               </div>
             </div>
-          </form>
+          </motion.form>
 
-          {showAnswer && (
-            <AnswerDisplay question={question} category={category} />
+          {answer && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
+              <AnswerDisplay question={question} data={answer} />
+            </motion.div>
           )}
         </div>
       </div>

@@ -26,8 +26,8 @@ export function Header() {
   const navItems = [
     { name: "Beranda", href: "/" },
     { name: "Chatbot", href: "/chatbot" },
-    { name: "Riwayat", href: "#" },
-    { name: "Tentang Kami", href: "#" },
+    // { name: "Riwayat", href: "/riwayat" },
+    { name: "Tentang Kami", href: "/tentang-kami" },
     {
       name: "Software House",
       href: "https://gutechdeveloper.site",
@@ -56,7 +56,7 @@ export function Header() {
             transition={{
               duration: 1,
               repeat: Number.POSITIVE_INFINITY,
-              repeatDelay: 5,
+              repeatDelay: 2,
             }}
             className="rounded-lg p-1"
           >

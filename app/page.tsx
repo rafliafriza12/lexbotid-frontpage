@@ -1,8 +1,6 @@
 import { SearchForm } from "@/components/search-form";
 import { Hero } from "@/components/hero";
 import { Features } from "@/components/features";
-import { RecentQuestions } from "@/components/recent-questions";
-
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
@@ -10,7 +8,6 @@ export default function Home() {
         <Hero />
         <SearchForm />
         <Features />
-        <RecentQuestions />
       </main>
     </div>
   );

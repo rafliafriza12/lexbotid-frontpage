@@ -11,99 +11,133 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
+import OpenAI from "openai";
+import ReactMarkdown from "react-markdown";
 type Message = {
   id: string;
   content: string;
   role: "user" | "assistant";
   timestamp: Date;
-  sources?: {
-    title: string;
-    type: string;
-  }[];
+  isShow?: boolean;
 };
 
 export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
+  const openai = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: process.env.NEXT_PUBLIC_DEEP_SEEK_API_KEY as string,
+    dangerouslyAllowBrowser: true,
+  });
+  const [contextMessage, setContextMessage] = useState<Message[]>([
     {
-      id: "1",
-      content:
-        "Selamat datang di Asisten Hukum AI. Apa yang ingin Anda tanyakan tentang perundang-undangan Indonesia?",
+      id: Date.now().toString(),
+      content: `
+      Anda adalah pakar hukum yang ahli dalam sistem hukum Indonesia (pidana, perdata, tata negara, dll.) dengan kemampuan merujuk pada UUD 1945, KUHP, KUHPer, UU sektoral, yurisprudensi MA/MK, serta peraturan turunannya.
+
+      Ketentuan jawaban saya:
+      - Jawablah semua pertanyaan dalam bahasa Indonesia yang formal dan jelas.
+      - Maksimal 3 kalimat dengan bahasa formal namun mudah dipahami.
+      - Sebutkan dasar hukum (pasal/UU/yurisprudensi) jika relevan.
+      - Bersifat netral – hindari opini pribadi kecuali diminta sebagai analisis hukum.
+      - Peringatkan pengguna jika pertanyaan membutuhkan konsultasi langsung dengan ahli hukum.
+      - Jika pertanyaan di luar konteks hukum, jawab 'Saya tidak tahu'  dan sarankan konsultasi ke ahli terkait.
+      - jangan menyertakan kata-kata seperti ini 'berikut adalah jawaban dalam format yang diminta:' atau yang sejenisnya, cukup jawab dengan jelas
+
+      (Contoh: 'Pasal 1320 KUHPer mengatur syarat sah perjanjian: sepakat, cakap, objek tertentu, dan sebab yang halal.')
+      `,
       role: "assistant",
+      isShow: false,
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Contoh respons untuk simulasi
-  const exampleResponses = [
-    {
-      content:
-        "Berdasarkan UU No. 13 Tahun 2003 tentang Ketenagakerjaan, hak-hak pekerja meliputi hak atas upah yang layak, jam kerja yang wajar, istirahat dan cuti, jaminan sosial, dan keselamatan kerja.",
-      sources: [
-        { title: "UU No. 13 Tahun 2003", type: "uu" },
-        { title: "PP No. 78 Tahun 2015", type: "pp" },
-      ],
-    },
-    {
-      content:
-        "Menurut UU No. 1 Tahun 1974 jo. UU No. 16 Tahun 2019 tentang Perkawinan, syarat usia minimal untuk menikah adalah 19 tahun baik untuk pria maupun wanita.",
-      sources: [
-        { title: "UU No. 1 Tahun 1974", type: "uu" },
-        { title: "UU No. 16 Tahun 2019", type: "uu" },
-      ],
-    },
-    {
-      content:
-        "Berdasarkan UU No. 40 Tahun 2007 tentang Perseroan Terbatas, untuk mendirikan PT diperlukan minimal 2 orang pendiri, akta notaris, modal dasar minimal, dan pengesahan dari Kementerian Hukum dan HAM.",
-      sources: [
-        { title: "UU No. 40 Tahun 2007", type: "uu" },
-        { title: "Permen Hukum dan HAM No. 4 Tahun 2014", type: "permen" },
-      ],
-    },
-  ];
-
-  useEffect(() => {
-    // scrollToBottom();
-  }, [messages]);
+  const [botId, setBotId] = useState<string>("");
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    scrollToBottom();
+    // console.log(contextMessage);
+  }, [contextMessage]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Add user message
+    // setIsStreamStop(false);
+
     const userMessage: Message = {
       id: Date.now().toString(),
       content: input,
       role: "user",
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMessage]);
+
+    // Tambahkan pesan user ke chat
+    setContextMessage((prev) => [...prev, userMessage]);
     setInput("");
     setIsTyping(true);
-    scrollToBottom();
 
-    // Simulate AI response after delay
-    setTimeout(() => {
-      const randomResponse =
-        exampleResponses[Math.floor(Math.random() * exampleResponses.length)];
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: randomResponse.content,
-        role: "assistant",
-        timestamp: new Date(),
-        sources: randomResponse.sources,
-      };
-      setMessages((prev) => [...prev, botMessage]);
-      setIsTyping(false);
-      scrollToBottom();
-    }, 1500);
+    try {
+      const stream = await openai.chat.completions.create({
+        stream: true,
+        model: "deepseek/deepseek-chat-v3-0324:free",
+        messages: [
+          ...contextMessage.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          {
+            role: "user",
+            content: input,
+          },
+        ],
+      });
+
+      let assistantReply = "";
+      const assistantId = Date.now().toString();
+      setBotId(assistantId);
+      // Tambahkan placeholder pesan assistant
+      setContextMessage((prev) => [
+        ...prev,
+        {
+          id: assistantId,
+          content: "",
+          role: "assistant",
+          timestamp: new Date(),
+        },
+      ]);
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) {
+          assistantReply += content;
+
+          setContextMessage((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId ? { ...msg, content: assistantReply } : msg
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      // Tambahkan pesan error ke chat
+      setContextMessage((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          content: "Terjadi kesalahan saat memproses permintaan.",
+          role: "assistant",
+          timestamp: new Date(),
+        },
+      ]);
+    }
+
+    setIsTyping(false);
   };
 
   return (
@@ -111,80 +145,77 @@ export function ChatInterface() {
       <div className="h-[600px] flex flex-col">
         <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
           <AnimatePresence initial={false}>
-            {messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={cn(
-                  "flex",
-                  message.role === "user" ? "justify-end" : "justify-start"
-                )}
-              >
-                <div
+            {contextMessage.map((message) =>
+              message.isShow !== false ? (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
                   className={cn(
-                    "flex gap-3 max-w-[80%]",
-                    message.role === "user" ? "flex-row-reverse" : "flex-row"
+                    "flex",
+                    message.role === "user"
+                      ? "justify-end py-5"
+                      : "justify-start py-5"
                   )}
                 >
-                  <Avatar
-                    className={cn(
-                      "h-8 w-8",
-                      message.role === "assistant" &&
-                        "bg-red-100 dark:bg-red-900/20"
-                    )}
-                  >
-                    {message.role === "assistant" ? (
-                      <>
-                        <AvatarFallback className="bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400">
-                          <Bot className="h-4 w-4" />
-                        </AvatarFallback>
-                        <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                      </>
-                    ) : (
-                      <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-                        <User className="h-4 w-4" />
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
                   <div
                     className={cn(
-                      "rounded-lg p-4",
-                      message.role === "user"
-                        ? "bg-blue-500 text-white dark:bg-blue-600"
-                        : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                      "flex gap-3 max-w-[80%]",
+                      message.role === "user" ? "flex-row-reverse" : "flex-row"
                     )}
                   >
-                    <p className="text-sm sm:text-base">{message.content}</p>
-                    {message.sources && (
-                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                          Sumber:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {message.sources.map((source, index) => (
-                            <Badge
-                              key={index}
-                              variant={
-                                source.type === "uu"
-                                  ? "default"
-                                  : source.type === "pp"
-                                  ? "secondary"
-                                  : "outline"
-                              }
-                              className="text-xs animate-fade-in"
+                    <Avatar
+                      className={cn(
+                        "h-8 w-8",
+                        message.role === "assistant" &&
+                          "bg-red-100 dark:bg-red-900/20"
+                      )}
+                    >
+                      {message.role === "assistant" ? (
+                        <>
+                          <AvatarFallback className="bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4"
                             >
-                              {source.title}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                              <path d="M12 8V4H8" />
+                              <rect width="16" height="12" x="4" y="8" rx="2" />
+                              <path d="M2 14h2" />
+                              <path d="M20 14h2" />
+                              <path d="M15 13v2" />
+                              <path d="M9 13v2" />
+                            </svg>
+                          </AvatarFallback>
+                        </>
+                      ) : (
+                        <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div
+                      className={cn(
+                        "rounded-lg p-4",
+                        message.role === "user"
+                          ? "bg-blue-500 text-white dark:bg-blue-600"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                      )}
+                    >
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ) : null
+            )}
             {isTyping && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -192,7 +223,7 @@ export function ChatInterface() {
                 className="flex justify-start"
               >
                 <div className="flex gap-3 max-w-[80%]">
-                  <Avatar className="h-8 w-8 bg-red-100 dark:bg-red-900/20">
+                  <Avatar className="h-8 w-8 bg-red-100 dark:bg-red-900/20 opacity-0">
                     <AvatarFallback className="bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400">
                       <Bot className="h-4 w-4" />
                     </AvatarFallback>
@@ -240,22 +271,6 @@ export function ChatInterface() {
 
         <div className="border-t p-4 bg-white dark:bg-gray-950">
           <form onSubmit={handleSubmit} className="flex gap-2">
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="rounded-full h-10 w-10 flex-shrink-0 animate-pulse"
-            >
-              <Sparkles className="h-4 w-4 text-yellow-500" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="rounded-full h-10 w-10 flex-shrink-0"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
             <div className="relative flex-1">
               <Input
                 placeholder="Ketik pertanyaan hukum Anda..."

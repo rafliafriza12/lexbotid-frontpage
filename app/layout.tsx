@@ -8,7 +8,7 @@ import { Footer } from "@/components/footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "HukumQA - Platform Question Answering Perundang-undangan Indonesia",
+  title: "LexBotID",
   description:
     "Temukan jawaban untuk pertanyaan hukum Anda berdasarkan UU, PP, dan Permen di Indonesia",
 };
