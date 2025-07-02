@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { AnswerDisplay } from "@/components/answer-display";
 import { motion } from "framer-motion";
 import API from "@/lib/API";
+import Link from "next/link";
 
 interface ResponseAPI {
   answer: string;
@@ -19,11 +20,15 @@ export function SearchForm() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<ResponseAPI | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState<Boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!question || !question.trim()) return;
     setIsLoading(true);
+    setIsError(false);
+    setErrorMessage("");
     setAnswer(null);
     API.post("/api/qa", { question: question })
       .then((res) => {
@@ -33,6 +38,8 @@ export function SearchForm() {
       .catch((err) => {
         console.log(err);
         setIsLoading(false);
+        setIsError(true);
+        setErrorMessage(err.response.data.message);
       });
   };
 
@@ -70,29 +77,21 @@ export function SearchForm() {
             className="space-y-4"
           >
             <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Contoh: Apa sanksi untuk pelanggaran lalu lintas?"
-                  className="pl-10"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2 w-full lg:w-auto justify-center items-center">
-                <Button type="submit" disabled={!question || isLoading}>
-                  {isLoading ? (
-                    <div className="flex items-center">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                      <span>Mencari...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <span>Cari</span>
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </div>
-                  )}
+              <div className="flex gap-2 w-full justify-center items-center">
+                <Button>
+                  <Link href={"/chatbot"}>
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                        <span>Mencari...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <span>Mulai Bertanya</span>
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </div>
+                    )}
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -106,6 +105,17 @@ export function SearchForm() {
               transition={{ duration: 0.5 }}
             >
               <AnswerDisplay question={question} data={answer} />
+            </motion.div>
+          )}
+
+          {isError && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
+              <p className="text-red-500">{errorMessage}</p>
             </motion.div>
           )}
         </div>

@@ -28,10 +28,10 @@ export function Header() {
     { name: "Chatbot", href: "/chatbot" },
     // { name: "Riwayat", href: "/riwayat" },
     { name: "Tentang Kami", href: "/tentang-kami" },
-    {
-      name: "Software House",
-      href: "https://gutechdeveloper.site",
-    },
+    // {
+    //   name: "Software House",
+    //   href: "https://gutechdeveloper.site",
+    // },
   ];
 
   // if (!isMounted) return null
@@ -64,6 +64,18 @@ export function Header() {
           </motion.div>
           <span className="text-xl font-bold">LexBotID</span>
         </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="rounded-full absolute right-[15%] md:right-[5%] lg:right-0"
+        >
+          {theme === "dark" ? (
+            <Sun className="h-5 w-5" />
+          ) : (
+            <Moon className="h-5 w-5" />
+          )}
+        </Button>
         <nav className="hidden md:flex gap-6">
           {navItems.map((item) => (
             <Link
@@ -81,18 +93,6 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          {/* <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="rounded-full"
-          >
-            {theme === "dark" ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
-          </Button> */}
           <Sheet>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon" className="rounded-full">
